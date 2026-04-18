@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Smart Task Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    body {
+    font-family: Arial;
+    text-align: center;
+}
+
+input {
+    padding: 10px;
+    width: 200px;
+}
+
+button {
+    padding: 10px;
+    margin: 5px;
+}
+
+li {
+    list-style: none;
+    margin: 10px;
+}
+
+.completed {
+    text-decoration: line-through;
+    color: gray;
+}
+</style>
+<body>
+
+    <h1>Task Manager</h1>
+
+    <input type="text" id="taskInput" placeholder="Enter task...">
+    <button onclick="addTask()">Add</button>
+
+    <br><br>
+
+    <input type="text" id="searchInput" placeholder="Search task..." onkeyup="searchTask()">
+
+    <br><br>
+
+    <button onclick="filterTasks('all')">All</button>
+    <button onclick="filterTasks('completed')">Completed</button>
+    <button onclick="filterTasks('pending')">Pending</button>
+
+    <ul id="taskList"></ul>
+
+    <script src="project.js" defer></script>
+</body>
+</html>
