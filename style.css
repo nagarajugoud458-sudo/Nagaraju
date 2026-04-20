@@ -1,0 +1,68 @@
+*{
+  background-color: aqua;
+}
+/* 🌊 Ocean background */
+.ocean {
+
+
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(to top, #020111, #0f2027);
+}
+
+/* 🌕 Moon */
+.moon {
+  position: absolute;
+  top: 80px;
+  right: 150px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #fff, #ddd);
+  border-radius: 50%;
+  box-shadow: 0 0 40px #fff;
+}
+
+/* 🌊 Reflection */
+.reflection {
+  position: absolute;
+  top: 160px;
+  right: 170px;
+  width: 40px;
+  height: 200px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+  filter: blur(6px);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.3; transform: scaleY(1); }
+  50% { opacity: 0.6; transform: scaleY(1.1); }
+  100% { opacity: 0.3; transform: scaleY(1); }
+}
+
+/* 🌊 Waves */
+.wave {
+  position: absolute;
+  bottom: 0;
+  width: 200%;
+  height: 200px;
+  background: rgba(0, 150, 255, 0.25);
+  border-radius: 43%;
+  animation: waveMove 8s linear infinite;
+}
+
+.wave2 {
+  height: 250px;
+  background: rgba(0, 200, 255, 0.15);
+  animation: waveMove 12s linear infinite reverse;
+}
+
+@keyframes waveMove {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-25%) translateY(10px); }
+  100% { transform: translateX(-50%) translateY(0); }
+}
