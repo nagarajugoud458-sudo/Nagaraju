@@ -1,54 +1,1006 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Smart Task Manager</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCF · Student Registration Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-    body {
-    font-family: Arial;
+  :root {
+    --gold: #F5C842;
+    --gold-dim: #c9a02a;
+    --bg: #0d0d12;
+    --surface: #13131b;
+    --surface2: #1a1a26;
+    --border: rgba(245,200,66,0.15);
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --success: #2ecc88;
+    --error: #ff4e6a;
+    --warn: #ffb347;
+    --radius: 14px;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* ── Custom Cursor ── */
+  #cursor-ring {
+    position: fixed; top: 0; left: 0; z-index: 9999;
+    pointer-events: none;
+    width: 36px; height: 36px;
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width .25s, height .25s, border-color .25s, opacity .25s;
+    mix-blend-mode: difference;
+  }
+  #cursor-dot {
+    position: fixed; top: 0; left: 0; z-index: 9999;
+    pointer-events: none;
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform .1s;
+  }
+  body.clicking #cursor-ring { width: 22px; height: 22px; border-color: var(--success); }
+
+  /* ── Background Mesh ── */
+  .bg-mesh {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 60% at 20% 20%, rgba(245,200,66,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 50% at 80% 80%, rgba(46,204,136,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 70% 10%, rgba(99,102,241,0.04) 0%, transparent 60%);
+  }
+  .bg-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(245,200,66,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,200,66,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    width: 100%; min-height: 100vh;
+  }
+  @media(max-width:768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    gap: 40px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .brand-logo {
+    width: 44px; height: 44px;
+    background: var(--gold);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 800; font-size: 15px; color: #0d0d12;
+    letter-spacing: 1px; flex-shrink: 0;
+  }
+  .brand-text { font-family: var(--font-head); }
+  .brand-text .name { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
+  .brand-text .sub { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+
+  .nav-steps { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .nav-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 12px 16px; border-radius: var(--radius);
+    transition: background .2s, transform .2s;
+    position: relative; cursor: default;
+  }
+  .nav-step.active { background: rgba(245,200,66,0.08); }
+  .nav-step.done { opacity: 0.7; }
+  .nav-step.locked { opacity: 0.35; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-size: 12px; font-weight: 700;
+    transition: all .3s;
+  }
+  .nav-step.active .step-num { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,0.1); }
+  .nav-step.done .step-num { border-color: var(--success); background: var(--success); color: #0d0d12; }
+  .step-info .step-title { font-family: var(--font-head); font-size: 13px; font-weight: 600; line-height: 1; }
+  .step-info .step-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .connector {
+    width: 2px; height: 20px; background: var(--border);
+    margin: 2px 0 2px 27px; border-radius: 2px;
+  }
+  .connector.done-line { background: linear-gradient(to bottom, var(--success), var(--border)); }
+
+  .sidebar-footer { font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .sidebar-footer strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 12px; }
+
+  /* ── Progress Bar ── */
+  .prog-bar-wrap {
+    height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .prog-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--gold), var(--success));
+    border-radius: 2px;
+    transition: width .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .prog-label { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+
+  /* ── Main Content ── */
+  .main {
+    display: flex; flex-direction: column;
+    padding: 40px clamp(20px, 5vw, 64px);
+    max-width: 760px; width: 100%;
+    margin: 0 auto;
+  }
+
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 48px;
+  }
+  .step-badge {
+    font-family: var(--font-head); font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold);
+    padding: 6px 14px; border: 1px solid var(--gold);
+    border-radius: 100px; background: rgba(245,200,66,0.05);
+  }
+  .today-date { font-size: 12px; color: var(--muted); }
+
+  /* ── Step Panels ── */
+  .step-panel { display: none; animation: panelIn .4s cubic-bezier(.34,1.2,.64,1); }
+  .step-panel.active { display: block; }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel-title { font-family: var(--font-head); font-size: clamp(28px, 5vw, 42px); font-weight: 800; line-height: 1.1; margin-bottom: 10px; }
+  .panel-title span { color: var(--gold); }
+  .panel-sub { font-size: 14px; color: var(--muted); margin-bottom: 40px; max-width: 480px; line-height: 1.6; }
+
+  /* ── Form Fields ── */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:500px) { .field-row { grid-template-columns: 1fr; } }
+
+  .field { margin-bottom: 22px; }
+  label {
+    display: block; font-size: 12px; font-weight: 500;
+    letter-spacing: .8px; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  label .req { color: var(--gold); margin-left: 3px; }
+
+  .input-wrap { position: relative; }
+  .input-wrap .icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 16px; pointer-events: none;
+    transition: color .2s;
+  }
+  .input-wrap input, .input-wrap select {
+    width: 100%; padding: 14px 14px 14px 44px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: var(--font-body); font-size: 14px;
+    outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+    -webkit-appearance: none; appearance: none;
+    cursor: none;
+  }
+  .input-wrap input::placeholder { color: var(--muted); opacity: .7; }
+  .input-wrap input:focus, .input-wrap select:focus {
+    border-color: var(--gold);
+    background: rgba(245,200,66,0.04);
+    box-shadow: 0 0 0 3px rgba(245,200,66,0.12);
+  }
+  .input-wrap input:focus ~ .icon, .input-wrap select:focus ~ .icon { color: var(--gold); }
+  .input-wrap.valid input { border-color: var(--success); }
+  .input-wrap.invalid input { border-color: var(--error); }
+
+  /* Validation message */
+  .val-msg {
+    font-size: 11.5px; margin-top: 6px; min-height: 16px;
+    display: flex; align-items: center; gap: 5px;
+    transition: opacity .2s;
+  }
+  .val-msg.ok { color: var(--success); }
+  .val-msg.err { color: var(--error); }
+  .val-msg.warn { color: var(--warn); }
+
+  /* Password strength */
+  .pass-strength { margin-top: 8px; }
+  .strength-bars { display: flex; gap: 4px; margin-bottom: 4px; }
+  .s-bar {
+    flex: 1; height: 3px; background: var(--border); border-radius: 2px;
+    transition: background .3s;
+  }
+  .s-bar.weak { background: var(--error); }
+  .s-bar.medium { background: var(--warn); }
+  .s-bar.strong { background: var(--success); }
+  .strength-label { font-size: 11px; color: var(--muted); }
+
+  /* Select arrow */
+  .input-wrap select { padding-right: 40px; }
+  .select-arrow {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; color: var(--muted);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    width: 100%; padding: 15px 24px; margin-top: 8px;
+    background: var(--gold); color: #0d0d12;
+    border: none; border-radius: var(--radius);
+    font-family: var(--font-head); font-size: 15px; font-weight: 700;
+    letter-spacing: .5px;
+    cursor: none; transition: transform .2s, box-shadow .2s, background .2s;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background .2s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(245,200,66,0.3); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-row { display: flex; gap: 12px; }
+  .btn-ghost {
+    flex: 1; padding: 15px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); background: transparent;
+    color: var(--muted); font-family: var(--font-head); font-size: 14px;
+    cursor: none; transition: border-color .2s, color .2s;
+  }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+  .btn-primary.flex-2 { flex: 2; }
+
+  /* ── Quiz ── */
+  .quiz-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 28px;
     text-align: center;
-}
+  }
+  .quiz-icon { font-size: 36px; margin-bottom: 12px; }
+  .quiz-q { font-family: var(--font-head); font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .quiz-hint { font-size: 12px; color: var(--muted); }
 
-input {
-    padding: 10px;
-    width: 200px;
-}
+  /* ── ID Card ── */
+  .id-card {
+    background: linear-gradient(135deg, var(--surface2) 0%, rgba(245,200,66,0.06) 100%);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 32px; position: relative; overflow: hidden; margin-bottom: 28px;
+  }
+  .id-card::before {
+    content: 'GCF'; position: absolute; right: 20px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-head); font-size: 90px; font-weight: 800;
+    color: rgba(245,200,66,0.04); pointer-events: none; letter-spacing: -4px;
+  }
+  .id-top { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+  .id-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-size: 24px; font-weight: 800; color: #0d0d12;
+    flex-shrink: 0;
+  }
+  .id-name-block .id-fullname { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
+  .id-name-block .id-dept { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .id-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .id-field .lbl { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .id-field .val { font-size: 14px; font-weight: 500; }
+  .id-field .val.id-num {
+    font-family: var(--font-head); font-size: 16px; color: var(--gold); letter-spacing: 1px;
+  }
+  .id-footer {
+    margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .id-barcode { font-size: 22px; letter-spacing: 2px; color: var(--muted); }
+  .id-stamp {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid rgba(46,204,136,0.5); display: flex;
+    align-items: center; justify-content: center;
+    color: var(--success); font-size: 20px;
+  }
 
-button {
-    padding: 10px;
-    margin: 5px;
-}
+  /* ── Success Header ── */
+  .success-header { text-align: center; margin-bottom: 36px; }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 18px;
+    background: rgba(46,204,136,0.12); border: 2px solid var(--success);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; animation: popIn .5s .1s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
 
-li {
-    list-style: none;
-    margin: 10px;
-}
+  /* ── Tab Warning Banner ── */
+  .warning-banner {
+    display: none; align-items: center; gap: 12px;
+    background: rgba(255,78,106,0.1); border: 1px solid rgba(255,78,106,0.3);
+    border-radius: 10px; padding: 12px 18px;
+    font-size: 13px; color: var(--error); margin-bottom: 20px;
+  }
+  .warning-banner.show { display: flex; }
 
-.completed {
-    text-decoration: line-through;
-    color: gray;
-}
+  /* ── Mobile top progress ── */
+  .mobile-header { display: none; }
+  @media(max-width:768px) {
+    .mobile-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .mobile-brand { font-family: var(--font-head); font-weight: 800; font-size: 16px; }
+    .mobile-brand span { color: var(--gold); }
+    .main { padding: 24px 20px; }
+  }
+
+  /* Ripple on button */
+  .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    transform: scale(0); animation: ripple .5s linear;
+    pointer-events: none;
+  }
+  @keyframes ripple {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* Shake animation */
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)}
+    60%{transform:translateX(-4px)}
+    80%{transform:translateX(4px)}
+  }
+  .shake { animation: shake .35s ease; }
 </style>
+</head>
 <body>
 
-    <h1>Task Manager</h1>
+<!-- Custom Cursor -->
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
 
-    <input type="text" id="taskInput" placeholder="Enter task...">
-    <button onclick="addTask()">Add</button>
+<!-- Background -->
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
 
-    <br><br>
+<!-- Mobile Header -->
+<div class="mobile-header">
+  <div class="mobile-brand">GCF <span>·</span> Student Portal</div>
+  <div id="mob-badge" class="step-badge">Step 1 of 5</div>
+</div>
 
-    <input type="text" id="searchInput" placeholder="Search task..." onkeyup="searchTask()">
+<div class="layout">
 
-    <br><br>
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">GCF</div>
+      <div class="brand-text">
+        <div class="name">Student Portal</div>
+        <div class="sub">Registration System</div>
+      </div>
+    </div>
 
-    <button onclick="filterTasks('all')">All</button>
-    <button onclick="filterTasks('completed')">Completed</button>
-    <button onclick="filterTasks('pending')">Pending</button>
+    <div>
+      <div style="margin-bottom:16px;">
+        <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-fill" style="width:20%"></div></div>
+        <div class="prog-label"><span id="prog-text">Step 1 of 5</span><span id="prog-pct">20%</span></div>
+      </div>
 
-    <ul id="taskList"></ul>
+      <nav class="nav-steps" id="nav-steps">
+        <div class="nav-step active" data-step="1">
+          <div class="step-num">1</div>
+          <div class="step-info">
+            <div class="step-title">Personal Info</div>
+            <div class="step-desc">Name, email &amp; age</div>
+          </div>
+        </div>
+        <div class="connector" id="con-1"></div>
 
-    <script src="project.js" defer></script>
+        <div class="nav-step locked" data-step="2">
+          <div class="step-num">2</div>
+          <div class="step-info">
+            <div class="step-title">Academic Info</div>
+            <div class="step-desc">Dept, roll &amp; year</div>
+          </div>
+        </div>
+        <div class="connector" id="con-2"></div>
+
+        <div class="nav-step locked" data-step="3">
+          <div class="step-num">3</div>
+          <div class="step-info">
+            <div class="step-title">Create Password</div>
+            <div class="step-desc">Secure your account</div>
+          </div>
+        </div>
+        <div class="connector" id="con-3"></div>
+
+        <div class="nav-step locked" data-step="4">
+          <div class="step-num">4</div>
+          <div class="step-info">
+            <div class="step-title">Math Quiz</div>
+            <div class="step-desc">Prove you're human!</div>
+          </div>
+        </div>
+        <div class="connector" id="con-4"></div>
+
+        <div class="nav-step locked" data-step="5">
+          <div class="step-num">5</div>
+          <div class="step-info">
+            <div class="step-title">All Done!</div>
+            <div class="step-desc">Your student ID card</div>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <div class="sidebar-footer">
+      <strong id="sidebar-date">Today: Loading…</strong>
+      All your information is stored securely in this session only.
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <div class="top-bar">
+      <div class="step-badge" id="top-badge">— STEP 1 OF 5</div>
+      <div class="today-date" id="top-date">Loading…</div>
+    </div>
+
+    <!-- Warning Banner -->
+    <div class="warning-banner" id="warn-banner">
+      ⚠️ <span id="warn-text">Warning! Don't switch tabs during registration.</span>
+    </div>
+
+    <!-- ══ STEP 1: Personal Info ══ -->
+    <div class="step-panel active" id="panel-1">
+      <div class="panel-title">Personal<br><span>Information</span></div>
+      <p class="panel-sub">Let's start with the basics. Fill in your name and contact details.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label>First Name <span class="req">*</span></label>
+          <div class="input-wrap" id="wrap-fname">
+            <input type="text" id="fname" placeholder="e.g. Ravi" autocomplete="off">
+            <span class="icon">◈</span>
+          </div>
+          <div class="val-msg" id="msg-fname"></div>
+        </div>
+        <div class="field">
+          <label>Last Name <span class="req">*</span></label>
+          <div class="input-wrap" id="wrap-lname">
+            <input type="text" id="lname" placeholder="e.g. Kumar" autocomplete="off">
+            <span class="icon">◈</span>
+          </div>
+          <div class="val-msg" id="msg-lname"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email Address <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-email">
+          <input type="email" id="email" placeholder="you@gmail.com" autocomplete="off">
+          <span class="icon">✦</span>
+        </div>
+        <div class="val-msg" id="msg-email"></div>
+      </div>
+
+      <div class="field">
+        <label>Age <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-age">
+          <input type="number" id="age" placeholder="Your age (15–60)" min="15" max="60" autocomplete="off">
+          <span class="icon">◉</span>
+        </div>
+        <div class="val-msg" id="msg-age"></div>
+      </div>
+
+      <div class="field">
+        <label>Phone Number</label>
+        <div class="input-wrap" id="wrap-phone">
+          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" autocomplete="off">
+          <span class="icon">⊕</span>
+        </div>
+        <div class="val-msg" id="msg-phone"></div>
+      </div>
+
+      <button class="btn-primary" onclick="goStep2()">Continue →</button>
+    </div>
+
+    <!-- ══ STEP 2: Academic Info ══ -->
+    <div class="step-panel" id="panel-2">
+      <div class="panel-title">Academic<br><span>Information</span></div>
+      <p class="panel-sub">Tell us about your department and academic details.</p>
+
+      <div class="field">
+        <label>Department <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-dept">
+          <select id="dept">
+            <option value="">— Select your department —</option>
+            <option>Computer Science (CS)</option>
+            <option>Information Technology (IT)</option>
+            <option>Electronics & Communication (ECE)</option>
+            <option>Electrical Engineering (EEE)</option>
+            <option>Mechanical Engineering (ME)</option>
+            <option>Civil Engineering (CE)</option>
+            <option>Business Administration (BBA)</option>
+            <option>Commerce (B.Com)</option>
+            <option>Science (BSc)</option>
+            <option>Arts & Humanities (BA)</option>
+          </select>
+          <span class="icon">⬡</span>
+          <span class="select-arrow">▾</span>
+        </div>
+        <div class="val-msg" id="msg-dept"></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Roll Number <span class="req">*</span></label>
+          <div class="input-wrap" id="wrap-roll">
+            <input type="text" id="roll" placeholder="e.g. 2024CS001" autocomplete="off">
+            <span class="icon">◈</span>
+          </div>
+          <div class="val-msg" id="msg-roll"></div>
+        </div>
+        <div class="field">
+          <label>Academic Year <span class="req">*</span></label>
+          <div class="input-wrap" id="wrap-year">
+            <select id="year">
+              <option value="">— Select year —</option>
+              <option>1st Year</option>
+              <option>2nd Year</option>
+              <option>3rd Year</option>
+              <option>4th Year</option>
+              <option>5th Year</option>
+            </select>
+            <span class="icon">◉</span>
+            <span class="select-arrow">▾</span>
+          </div>
+          <div class="val-msg" id="msg-year"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Admission Year <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-admyr">
+          <input type="number" id="admyr" placeholder="e.g. 2023" min="2010" max="2026" autocomplete="off">
+          <span class="icon">✦</span>
+        </div>
+        <div class="val-msg" id="msg-admyr"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="goTo(1)">← Back</button>
+        <button class="btn-primary flex-2" onclick="goStep3()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ══ STEP 3: Password ══ -->
+    <div class="step-panel" id="panel-3">
+      <div class="panel-title">Secure Your<br><span>Account</span></div>
+      <p class="panel-sub">Create a strong password to protect your student profile.</p>
+
+      <div class="field">
+        <label>Password <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-pass">
+          <input type="password" id="pass" placeholder="Min 8 chars, upper + number + symbol" autocomplete="new-password">
+          <span class="icon">⬡</span>
+        </div>
+        <div class="pass-strength">
+          <div class="strength-bars">
+            <div class="s-bar" id="sb1"></div>
+            <div class="s-bar" id="sb2"></div>
+            <div class="s-bar" id="sb3"></div>
+            <div class="s-bar" id="sb4"></div>
+          </div>
+          <div class="strength-label" id="strength-lbl">Enter a password</div>
+        </div>
+        <div class="val-msg" id="msg-pass"></div>
+      </div>
+
+      <div class="field">
+        <label>Confirm Password <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-cpass">
+          <input type="password" id="cpass" placeholder="Re-enter your password" autocomplete="new-password">
+          <span class="icon">⬡</span>
+        </div>
+        <div class="val-msg" id="msg-cpass"></div>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:20px;font-size:12px;color:var(--muted);line-height:1.8;">
+        <strong style="color:var(--text);font-size:12px;">Password must contain:</strong><br>
+        <span id="req-len">○</span> At least 8 characters &nbsp;
+        <span id="req-upper">○</span> Uppercase letter &nbsp;
+        <span id="req-num">○</span> Number &nbsp;
+        <span id="req-sym">○</span> Symbol (!@#$…)
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="goTo(2)">← Back</button>
+        <button class="btn-primary flex-2" onclick="goStep4()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ══ STEP 4: Math Quiz ══ -->
+    <div class="step-panel" id="panel-4">
+      <div class="panel-title">Prove You're<br><span>Human!</span></div>
+      <p class="panel-sub">Answer this quick math question to verify you're not a robot.</p>
+
+      <div class="quiz-box">
+        <div class="quiz-icon">🧮</div>
+        <div class="quiz-q" id="quiz-question">Loading…</div>
+        <div class="quiz-hint">Enter only the numeric answer</div>
+      </div>
+
+      <div class="field">
+        <label>Your Answer <span class="req">*</span></label>
+        <div class="input-wrap" id="wrap-quiz">
+          <input type="number" id="quiz-ans" placeholder="Type your answer here" autocomplete="off">
+          <span class="icon">✦</span>
+        </div>
+        <div class="val-msg" id="msg-quiz"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="goTo(3)">← Back</button>
+        <button class="btn-primary flex-2" onclick="goStep5()">Submit →</button>
+      </div>
+    </div>
+
+    <!-- ══ STEP 5: All Done ══ -->
+    <div class="step-panel" id="panel-5">
+      <div class="success-header">
+        <div class="success-icon">✓</div>
+        <div class="panel-title">Registration<br><span>Complete!</span></div>
+        <p class="panel-sub" style="margin:8px auto 0;">Welcome to GCF Student Portal. Here's your student ID card.</p>
+      </div>
+
+      <div class="id-card" id="id-card">
+        <div class="id-top">
+          <div class="id-avatar" id="id-initials">RK</div>
+          <div class="id-name-block">
+            <div class="id-fullname" id="id-fullname">Ravi Kumar</div>
+            <div class="id-dept" id="id-dept-label">Computer Science (CS) · 1st Year</div>
+          </div>
+        </div>
+        <div class="id-fields">
+          <div class="id-field">
+            <div class="lbl">Student ID</div>
+            <div class="val id-num" id="id-num">GCF-000000</div>
+          </div>
+          <div class="id-field">
+            <div class="lbl">Email</div>
+            <div class="val" id="id-email" style="font-size:12px;word-break:break-all;">—</div>
+          </div>
+          <div class="id-field">
+            <div class="lbl">Roll Number</div>
+            <div class="val" id="id-roll">—</div>
+          </div>
+          <div class="id-field">
+            <div class="lbl">Admission Year</div>
+            <div class="val" id="id-admyr">—</div>
+          </div>
+        </div>
+        <div class="id-footer">
+          <div class="id-barcode">| | | | | | | | |</div>
+          <div class="id-stamp">✓</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="resetPortal()" style="background:var(--surface2);color:var(--text);border:1.5px solid var(--border);">
+        ↺ Register Another Student
+      </button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  /* ── Cursor ── */
+  const ring = document.getElementById('cursor-ring');
+  const dot = document.getElementById('cursor-dot');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; dot.style.left = mx+'px'; dot.style.top = my+'px'; });
+  (function animRing() {
+    rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
+    ring.style.left = rx+'px'; ring.style.top = ry+'px';
+    requestAnimationFrame(animRing);
+  })();
+  document.addEventListener('mousedown', () => document.body.classList.add('clicking'));
+  document.addEventListener('mouseup',   () => document.body.classList.remove('clicking'));
+
+  /* Ripple on buttons */
+  document.querySelectorAll('.btn-primary').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const r = document.createElement('span');
+      r.className = 'ripple';
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+      this.appendChild(r);
+      setTimeout(() => r.remove(), 600);
+    });
+  });
+
+  /* ── Date ── */
+  const now = new Date();
+  const fmtDate = now.toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('top-date').textContent = fmtDate;
+  document.getElementById('sidebar-date').textContent = 'Today: ' + fmtDate;
+
+  /* ── State ── */
+  let currentStep = 1;
+  const data = {};
+  let quizAnswer = 0;
+  let tabWarnings = 0;
+  let formStarted = false;
+
+  /* ── Quiz Generator ── */
+  function genQuiz() {
+    const ops = ['+', '-', '×'];
+    const op = ops[Math.floor(Math.random()*3)];
+    let a, b, ans;
+    if (op === '+') { a = rnd(10,99); b = rnd(10,99); ans = a+b; }
+    else if (op === '-') { a = rnd(30,99); b = rnd(1,a); ans = a-b; }
+    else { a = rnd(2,19); b = rnd(2,12); ans = a*b; }
+    document.getElementById('quiz-question').textContent = `What is  ${a}  ${op}  ${b}  =  ?`;
+    quizAnswer = ans;
+  }
+  function rnd(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
+
+  /* ── Navigation ── */
+  function goTo(step) {
+    document.getElementById('panel-'+currentStep).classList.remove('active');
+    document.getElementById('panel-'+step).classList.add('active');
+    const pcts = [0,20,40,60,80,100];
+    const labels = ['','Step 1 of 5','Step 2 of 5','Step 3 of 5','Step 4 of 5','Complete!'];
+    document.getElementById('prog-fill').style.width = pcts[step]+'%';
+    document.getElementById('prog-text').textContent = labels[step];
+    document.getElementById('prog-pct').textContent = pcts[step]+'%';
+    document.getElementById('top-badge').textContent = '— ' + (step<5 ? 'STEP '+step+' OF 5' : 'ALL DONE!');
+    document.getElementById('mob-badge').textContent = step<5 ? 'Step '+step+' of 5' : 'Done!';
+
+    // Sidebar steps
+    document.querySelectorAll('.nav-step').forEach(el => {
+      const s = parseInt(el.dataset.step);
+      el.classList.remove('active','done','locked');
+      if (s < step) { el.classList.add('done'); el.querySelector('.step-num').textContent = '✓'; }
+      else if (s === step) el.classList.add('active');
+      else el.classList.add('locked');
+    });
+    for (let i=1;i<=4;i++) {
+      const c = document.getElementById('con-'+i);
+      c.classList.toggle('done-line', i < step);
+    }
+    currentStep = step;
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  /* ── Validators ── */
+  function setField(wrapId, msgId, state, msg) {
+    const w = document.getElementById(wrapId);
+    const m = document.getElementById(msgId);
+    w.classList.remove('valid','invalid');
+    if (state === 'ok') { w.classList.add('valid'); m.className='val-msg ok'; m.textContent='✓ '+msg; }
+    else if (state === 'err') { w.classList.add('invalid'); m.className='val-msg err'; m.textContent='✕ '+msg; }
+    else { m.className='val-msg warn'; m.textContent='⚡ '+msg; }
+  }
+  function clearField(wrapId, msgId) {
+    document.getElementById(wrapId).classList.remove('valid','invalid');
+    document.getElementById(msgId).textContent='';
+  }
+
+  /* Live validations */
+  const emailRgx = /^[a-zA-Z0-9._%+\-]+@gmail\.com$/;
+  document.getElementById('email').addEventListener('input', function() {
+    formStarted = true;
+    if (!this.value) { clearField('wrap-email','msg-email'); return; }
+    emailRgx.test(this.value)
+      ? setField('wrap-email','msg-email','ok','Valid Gmail address')
+      : setField('wrap-email','msg-email','err','Must be a valid @gmail.com address');
+  });
+  document.getElementById('fname').addEventListener('input', function() {
+    if (!this.value) { clearField('wrap-fname','msg-fname'); return; }
+    this.value.trim().length >= 2
+      ? setField('wrap-fname','msg-fname','ok','Looks good')
+      : setField('wrap-fname','msg-fname','err','At least 2 characters');
+  });
+  document.getElementById('lname').addEventListener('input', function() {
+    if (!this.value) { clearField('wrap-lname','msg-lname'); return; }
+    this.value.trim().length >= 2
+      ? setField('wrap-lname','msg-lname','ok','Looks good')
+      : setField('wrap-lname','msg-lname','err','At least 2 characters');
+  });
+  document.getElementById('age').addEventListener('input', function() {
+    const v = parseInt(this.value);
+    if (!this.value) { clearField('wrap-age','msg-age'); return; }
+    if (v>=15 && v<=60) setField('wrap-age','msg-age','ok','Valid age');
+    else setField('wrap-age','msg-age','err','Age must be between 15 and 60');
+  });
+  document.getElementById('phone').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g,'').slice(0,10);
+    if (!this.value) { clearField('wrap-phone','msg-phone'); return; }
+    /^[6-9]\d{9}$/.test(this.value)
+      ? setField('wrap-phone','msg-phone','ok','Valid Indian mobile number')
+      : (this.value.length<10
+          ? setField('wrap-phone','msg-phone','warn','Keep typing… ('+this.value.length+'/10)')
+          : setField('wrap-phone','msg-phone','err','Must start with 6-9 and be 10 digits'));
+  });
+
+  /* Password strength */
+  document.getElementById('pass').addEventListener('input', function() {
+    const v = this.value;
+    const hasLen = v.length >= 8;
+    const hasUp = /[A-Z]/.test(v);
+    const hasNum = /\d/.test(v);
+    const hasSym = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(v);
+    const score = [hasLen,hasUp,hasNum,hasSym].filter(Boolean).length;
+    const bars = ['sb1','sb2','sb3','sb4'];
+    const cls = score<=1?'weak':score<=2?'medium':score<=3?'medium':'strong';
+    bars.forEach((id,i) => {
+      const b = document.getElementById(id);
+      b.className = 's-bar' + (i<score ? ' '+cls : '');
+    });
+    const labels = ['','Weak','Fair','Good','Strong 💪'];
+    document.getElementById('strength-lbl').textContent = v?labels[score]:'Enter a password';
+    document.getElementById('req-len').textContent   = hasLen ? '●' : '○';
+    document.getElementById('req-upper').textContent = hasUp  ? '●' : '○';
+    document.getElementById('req-num').textContent   = hasNum ? '●' : '○';
+    document.getElementById('req-sym').textContent   = hasSym ? '●' : '○';
+    if (score < 2) setField('wrap-pass','msg-pass','err','Password too weak');
+    else if (score < 4) setField('wrap-pass','msg-pass','warn','Getting stronger…');
+    else setField('wrap-pass','msg-pass','ok','Strong password!');
+    if (document.getElementById('cpass').value) checkCpass();
+  });
+  function checkCpass() {
+    const p = document.getElementById('pass').value;
+    const c = document.getElementById('cpass').value;
+    if (!c) { clearField('wrap-cpass','msg-cpass'); return; }
+    p === c
+      ? setField('wrap-cpass','msg-cpass','ok','Passwords match')
+      : setField('wrap-cpass','msg-cpass','err','Passwords do not match');
+  }
+  document.getElementById('cpass').addEventListener('input', checkCpass);
+
+  function shakeBtn(btn) { btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); }
+
+  /* ── Step Transitions ── */
+  function goStep2() {
+    const fname = document.getElementById('fname').value.trim();
+    const lname = document.getElementById('lname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const age   = parseInt(document.getElementById('age').value);
+    const btn = event.target;
+    if (!fname || fname.length < 2) { setField('wrap-fname','msg-fname','err','Enter a valid first name'); shakeBtn(btn); return; }
+    if (!lname || lname.length < 2) { setField('wrap-lname','msg-lname','err','Enter a valid last name'); shakeBtn(btn); return; }
+    if (!emailRgx.test(email)) { setField('wrap-email','msg-email','err','Enter a valid @gmail.com address'); shakeBtn(btn); return; }
+    if (!age || age<15 || age>60) { setField('wrap-age','msg-age','err','Enter a valid age (15-60)'); shakeBtn(btn); return; }
+    Object.assign(data, {fname,lname,email,age, phone: document.getElementById('phone').value});
+    goTo(2);
+  }
+  function goStep3() {
+    const dept = document.getElementById('dept').value;
+    const roll = document.getElementById('roll').value.trim();
+    const year = document.getElementById('year').value;
+    const admyr = parseInt(document.getElementById('admyr').value);
+    const btn = event.target;
+    if (!dept) { setField('wrap-dept','msg-dept','err','Please select your department'); shakeBtn(btn); return; }
+    if (!roll || roll.length < 3) { setField('wrap-roll','msg-roll','err','Enter a valid roll number'); shakeBtn(btn); return; }
+    if (!year) { setField('wrap-year','msg-year','err','Please select academic year'); shakeBtn(btn); return; }
+    if (!admyr || admyr<2010 || admyr>2026) { setField('wrap-admyr','msg-admyr','err','Enter a valid admission year (2010-2026)'); shakeBtn(btn); return; }
+    Object.assign(data, {dept,roll,year,admyr});
+    goTo(3);
+  }
+  function goStep4() {
+    const pass  = document.getElementById('pass').value;
+    const cpass = document.getElementById('cpass').value;
+    const btn = event.target;
+    const hasLen = pass.length>=8, hasUp=/[A-Z]/.test(pass), hasNum=/\d/.test(pass), hasSym=/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass);
+    if (!hasLen||!hasUp||!hasNum||!hasSym) { setField('wrap-pass','msg-pass','err','Password must meet all requirements'); shakeBtn(btn); return; }
+    if (pass!==cpass) { setField('wrap-cpass','msg-cpass','err','Passwords do not match'); shakeBtn(btn); return; }
+    data.pass = pass;
+    genQuiz();
+    goTo(4);
+  }
+  function goStep5() {
+    const ans = parseInt(document.getElementById('quiz-ans').value);
+    const btn = event.target;
+    if (isNaN(ans)) { setField('wrap-quiz','msg-quiz','err','Please enter your answer'); shakeBtn(btn); return; }
+    if (ans !== quizAnswer) { setField('wrap-quiz','msg-quiz','err','Incorrect! Try again.'); document.getElementById('quiz-ans').value=''; shakeBtn(btn); genQuiz(); return; }
+
+    // Build ID card
+    const id = 'GCF-' + Math.floor(100000+Math.random()*900000);
+    const initials = (data.fname[0]+data.lname[0]).toUpperCase();
+    document.getElementById('id-initials').textContent = initials;
+    document.getElementById('id-fullname').textContent = data.fname + ' ' + data.lname;
+    document.getElementById('id-dept-label').textContent = data.dept + ' · ' + data.year;
+    document.getElementById('id-num').textContent = id;
+    document.getElementById('id-email').textContent = data.email;
+    document.getElementById('id-roll').textContent = data.roll;
+    document.getElementById('id-admyr').textContent = data.admyr;
+    goTo(5);
+  }
+
+  function resetPortal() {
+    document.querySelectorAll('input').forEach(i => { i.value=''; });
+    document.querySelectorAll('select').forEach(s => { s.selectedIndex=0; });
+    document.querySelectorAll('.input-wrap').forEach(w => w.classList.remove('valid','invalid'));
+    document.querySelectorAll('.val-msg').forEach(m => m.textContent='');
+    document.querySelectorAll('.s-bar').forEach(b => b.className='s-bar');
+    document.getElementById('strength-lbl').textContent='Enter a password';
+    ['req-len','req-upper','req-num','req-sym'].forEach(id => document.getElementById(id).textContent='○');
+    tabWarnings=0; formStarted=false;
+    hideBanner();
+    goTo(1);
+  }
+
+  /* ── Tab-switch detection ── */
+  function showBanner(msg) {
+    const b = document.getElementById('warn-banner');
+    document.getElementById('warn-text').textContent = msg;
+    b.classList.add('show');
+  }
+  function hideBanner() { document.getElementById('warn-banner').classList.remove('show'); }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && (formStarted || currentStep > 1) && currentStep < 5) {
+      tabWarnings++;
+      if (tabWarnings >= 3) {
+        showBanner('⛔ 3 violations detected. Your session has been locked. Please refresh to restart.');
+        document.querySelectorAll('.btn-primary, .btn-ghost').forEach(b => b.disabled=true);
+      } else {
+        showBanner(`⚠️ Warning ${tabWarnings}/3: Tab switching detected! ${3-tabWarnings} warning(s) left before lockout.`);
+      }
+    }
+  });
+
+  /* track form start */
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('focus', () => { formStarted = true; });
+  });
+
+  /* Init */
+  genQuiz();
+</script>
+<div class="ocean">
+  <div class="moon"></div>
+  <div class="reflection"></div>
+  <div class="wave"></div>
+  <div class="wave wave2"></div>
+</div>
 </body>
 </html>
